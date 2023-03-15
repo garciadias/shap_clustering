@@ -46,10 +46,9 @@ jobs:
       fail-fast: true
 
     steps:
-      - name: "Poetry"
-      - uses: actions/checkout@v1
-      - uses: actions/setup-python@v1
-      - uses: knowsuchagency/poetry-install@v1
-        env:
-          POETRY_VIRTUALENVS_CREATE: false
-
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.8"
+      - uses: Gr1N/setup-poetry@v8
+      - run: poetry --version
