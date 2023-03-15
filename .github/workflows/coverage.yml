@@ -59,8 +59,8 @@ jobs:
           set -xe
           python -VV
           python -m site
-          python -m pip install --require-hashes -r requirements/tox.pip
-
+          curl -sSL https://install.python-poetry.org | python3 -
+          poetry init
       - name: "Run tox coverage for ${{ matrix.python-version }}"
         env:
           COVERAGE_COVERAGE: "yes"
