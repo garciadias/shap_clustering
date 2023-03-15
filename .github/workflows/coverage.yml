@@ -51,4 +51,6 @@ jobs:
         with:
           python-version: "3.8"
       - uses: Gr1N/setup-poetry@v8
-      - run: poetry --version
+      - run: |
+          poetry --version
+          poetry install
