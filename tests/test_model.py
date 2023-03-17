@@ -1,8 +1,8 @@
-from pytest import fixture
-
 from matplotlib.figure import Figure
 from numpy.random import seed as default_rng
-from pycaret.datasets import get_data
+from pytest import fixture
+from sklearn.datasets import fetch_california_housing
+from sklearn.utils.validation import check_is_fitted
 
 from shap_clustering.model import ModelSelection
 
@@ -12,26 +12,28 @@ default_rng(14032023)
 
 @fixture(scope="module")
 def df():
-    return get_data("house")
+    return fetch_california_housing(as_frame=True).frame.sample(100)
 
 
 @fixture(scope="module")
 def selection(df):
-    target = "SalePrice"
+    target = "MedHouseVal"
     selection = ModelSelection()
-    selection.fit(df.sample(100), target)
+    selection.fit(df, target)
     return selection
 
 
 def test_ModelSelection_is_trained(selection):
-    assert selection.trained_models is not None
-    assert len(selection.trained_models) == 3
-    assert selection.trained_models[0].__class__.__name__ == "GradientBoostingRegressor"
+    assert selection.models is not None
+    assert len(selection.models) == 3
+    assert selection.models[0].__class__.__name__ == "LinearRegression"
+    assert all([check_is_fitted(model) is None for model in selection.models])
 
 
-def test_ModelSelection_has_interpretation(selection):
+def test_ModelSelection_has_pdp(selection, df):
     # Check that the interpretation is a dictionary
     # Check that the elements in interpretation are matplotlib figures
-    interpretations = selection.interpret_models()
-    assert isinstance(interpretations, dict)
-    assert isinstance(interpretations["GradientBoostingRegressor"], Figure)
+    first_var = df.columns[0]
+    explanation = selection.explain()
+    assert isinstance(explanation.pdp, dict)
+    assert isinstance(explanation.pdp[first_var]["LinearRegression"], Figure)
