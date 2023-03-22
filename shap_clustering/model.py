@@ -1,13 +1,12 @@
 from dataclasses import dataclass, field
 
-import lightgbm as lgb
 import matplotlib.pyplot as plt
 import pandas as pd
+from lightgbm import LGBMRegressor
 from shap import Explainer
 from shap.plots import partial_dependence
-from sklearn.ensemble import RandomForestRegressor
-from sklearn.linear_model import LinearRegression
-from sklearn.model_selection import cross_val_score, train_test_split
+from sklearn.linear_model import ElasticNet, LinearRegression
+from sklearn.model_selection import train_test_split
 from sklearn.utils import resample
 
 
@@ -18,19 +17,27 @@ class Explanation:
     model_selection: "ModelSelection"
 
     def __post_init__(self):
-        self.pdp = self.pdp()
+        self.shap_values_ = self._shap_values()
+        self.shap_importance_ = self._shap_importance()
+        # self.pdp = self._pdp()
 
-    #     self.explainers = {}
-    #     self.shap_values = {}
-    #     for model in self.model_selection.models:
-    #         model_name = model.__class__.__name__
-    #         explainer = Explainer(model, resample(self.model_selection.X_train))
-    #         self.explainers[model_name] = explainer
-    #         self.shap_values[model_name] = explainer(
-    #             self.model_selection.X_test
-    #         )
+    def _shap_importance(self) -> pd.DataFrame:
+        """Return shap importance for the trained models.
 
-    def pdp(self) -> dict:
+        Returns
+        -------
+        pd.DataFrame : dataframe
+            Dataframe of SHAP importance for each trained model.
+
+        """
+        shap_importance = []
+        for shap_values in self.shap_values_.values():
+            shap_importance.append(abs(shap_values).mean(axis=0))
+        indexes = self.model_selection.X_train.columns
+        cols = list(self.shap_values_.keys())
+        return pd.DataFrame(shap_importance, columns=indexes, index=cols).T
+
+    def _pdp(self) -> dict:
         """Interpret the trained models using Partial Dependence Plots.
 
         Returns
@@ -52,9 +59,26 @@ class Explanation:
                     ice=False,
                     show=False,
                 )
-                pdp[feature][model_name] = plt.gcf()
+                pdp[feature][model_name] = plt.gca()
                 plt.close()
         return pdp
+
+    def _shap_values(self) -> dict:
+        """Return shap values for the trained models.
+
+        Returns
+        -------
+        dict : dictionary
+            Dictionary of SHAP values for each trained model.
+
+        """
+        shap_values = {}
+        for model in self.model_selection.models:
+            model_name = model.__class__.__name__
+            X = self.model_selection.X_train
+            explainer = Explainer(model, X)
+            shap_values[model_name] = explainer.shap_values(X)
+        return shap_values
 
 
 @dataclass
@@ -71,8 +95,8 @@ class ModelSelection:
     models: list = field(
         default_factory=lambda: [
             LinearRegression(),
-            RandomForestRegressor(),
-            lgb.LGBMRegressor(),
+            ElasticNet(),
+            LGBMRegressor(),
         ]
     )
 
@@ -110,4 +134,5 @@ class ModelSelection:
             Dictionary of Partial Dependence Plots for each trained model.
 
         """
-        return Explanation(self)
+        self.explaination = Explanation(self)
+        return self.explaination
