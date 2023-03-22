@@ -3,11 +3,14 @@ from dataclasses import dataclass, field
 import matplotlib.pyplot as plt
 import pandas as pd
 from lightgbm import LGBMRegressor
+from matplotlib.figure import Figure
 from shap import Explainer
 from shap.plots import partial_dependence
 from sklearn.linear_model import ElasticNet, LinearRegression
 from sklearn.model_selection import train_test_split
 from sklearn.utils import resample
+
+from shap_clustering.metrics import get_metrics
 
 
 @dataclass
@@ -19,7 +22,7 @@ class Explanation:
     def __post_init__(self):
         self.shap_values_ = self._shap_values()
         self.shap_importance_ = self._shap_importance()
-        # self.pdp = self._pdp()
+        self.pdp_ = self._pdp()
 
     def _shap_importance(self) -> pd.DataFrame:
         """Return shap importance for the trained models.
@@ -35,7 +38,10 @@ class Explanation:
             shap_importance.append(abs(shap_values).mean(axis=0))
         indexes = self.model_selection.X_train.columns
         cols = list(self.shap_values_.keys())
-        return pd.DataFrame(shap_importance, columns=indexes, index=cols).T
+        importances = pd.DataFrame(shap_importance, columns=indexes, index=cols).T
+        sort_model = self.model_selection.metrics.iloc[0].name
+        importances = importances.sort_values(sort_model, ascending=True)
+        return importances
 
     def _pdp(self) -> dict:
         """Interpret the trained models using Partial Dependence Plots.
@@ -80,6 +86,22 @@ class Explanation:
             shap_values[model_name] = explainer.shap_values(X)
         return shap_values
 
+    def importance_plot(self) -> Figure:
+        """Plot SHAP importance for the trained models.
+
+        Returns
+        -------
+        Figure : matplotlib figure
+            Figure of SHAP importance for each trained model.
+
+        """
+        fig, ax = plt.subplots()
+        normalized_importance = self.shap_importance_.div(
+            self.shap_importance_.max(axis=0), axis=1
+        )
+        normalized_importance.plot.barh(ax=ax)
+        return fig
+
 
 @dataclass
 class ModelSelection:
@@ -123,6 +145,7 @@ class ModelSelection:
         )
         for model in self.models:
             model.fit(self.X_train, self.y_train)
+        self.metrics = get_metrics(self.models, self.X_test, self.y_test)
         return self
 
     def explain(self) -> Explanation:
@@ -136,3 +159,4 @@ class ModelSelection:
         """
         self.explaination = Explanation(self)
         return self.explaination
+
