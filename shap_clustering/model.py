@@ -22,7 +22,6 @@ class Explanation:
     def __post_init__(self):
         self.shap_values_ = self._shap_values()
         self.shap_importance_ = self._shap_importance()
-        self.pdp_ = self._pdp()
 
     def _shap_importance(self) -> pd.DataFrame:
         """Return shap importance for the trained models.
@@ -43,7 +42,7 @@ class Explanation:
         importances = importances.sort_values(sort_model, ascending=True)
         return importances
 
-    def _pdp(self) -> dict:
+    def get_pdps(self) -> dict:
         """Interpret the trained models using Partial Dependence Plots.
 
         Returns
