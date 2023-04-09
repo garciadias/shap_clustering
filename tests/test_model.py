@@ -20,8 +20,21 @@ default_rng(14032023)
 
 @fixture(scope="module")
 def df():
-    return load_diabetes(as_frame=True).frame.sample(100)
-
+    data = load_diabetes(as_frame=True).frame.sample(100)
+    rename_dict = {
+        "age": "Age",
+        "sex": "Sex",
+        "bmi": "BMI",
+        "bp": "Blood Pressure",
+        "s1": "Total Cholesterol",
+        "s2": "LDL Cholesterol",
+        "s3": "HDL Cholesterol",
+        "s4": "Thyroid",
+        "s5": "Glaucoma",
+        "s6": "Glucose",
+    }
+    data = data.rename(columns=rename_dict)
+    return data
 
 @fixture(scope="module")
 def selection(df):
@@ -45,8 +58,9 @@ def test_ModelSelection_has_pdp(selection, df):
     # Check that the elements in interpretation are matplotlib figures
     first_var = df.columns[0]
     explanation = selection.explain()
-    assert isinstance(explanation.pdp_, dict)
-    assert isinstance(explanation.pdp_[first_var]["LinearRegression"], Axes)
+    pdps = explanation.get_pdps()
+    assert isinstance(pdps, dict)
+    assert isinstance(pdps[first_var]["LinearRegression"], Axes)
 
 
 def test_ModelSelection_has_shap_values(selection):
