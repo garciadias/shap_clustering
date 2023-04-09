@@ -33,6 +33,10 @@ def metric_selector(model: object) -> dict:
         return REGRESSION_METRICS
     elif model_type == "classifier":
         return CLASSIFICATION_METRICS
+    else:
+        raise ValueError(
+            "The model must be an instance of an scikit-learn regressor or classifier."
+        )
 
 
 def get_model_type(model):
