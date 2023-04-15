@@ -1,56 +1,33 @@
-# # Licensed under the Apache License: http://www.apache.org/licenses/LICENSE-2.0
-# # For details: https://github.com/nedbat/coveragepy/blob/master/NOTICE.txt
+name: Pipeline
+on: [push, pull_request]
 
-# name: "Coverage"
+jobs:
+  test:
+    runs-on: ubuntu-latest
 
-# on:
-#   # As currently structured, this adds too many jobs (checks?), so don't run it
-#   # on pull requests yet.
-#   push:
-#     branches:
-#       - master
-#       - "**/*metacov*"
-#   workflow_dispatch:
+    steps:
+      - name: Copia os arquivos do repo
+        uses: actions/checkout@v3
 
-# defaults:
-#   run:
-#     shell: bash
+      - name: Install python version 3.8.16
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.8.16'
 
-# env:
-#   PIP_DISABLE_PIP_VERSION_CHECK: 1
-#   FORCE_COLOR: 1    # Get colored pytest output
+      - name: Update pip
+        run: pip install --upgrade pip
 
-# permissions:
-#   contents: read
+      - name: Install poetry
+        run: pip install poetry
 
-# concurrency:
-#   group: "${{ github.workflow }}-${{ github.ref }}"
-#   cancel-in-progress: true
-
-# jobs:
-#   coverage:
-#     name: "${{ matrix.python-version }} on ${{ matrix.os }}"
-#     runs-on: "${{ matrix.os }}-latest"
-
-#     strategy:
-#       matrix:
-#         os:
-#           - ubuntu
-#         python-version:
-#           # When changing this list, be sure to check the [gh] list in
-#           # tox.ini so that tox will run properly. PYVERSIONS
-#           # Available versions:
-#           # https://github.com/actions/python-versions/blob/main/versions-manifest.json
-#           - "3.8"
-#       # If one job fails, stop the whole thing.
-#       fail-fast: true
-
-#     steps:
-#       - uses: actions/checkout@v3
-#       - uses: actions/setup-python@v4
-#         with:
-#           python-version: "3.8"
-#       - uses: Gr1N/setup-poetry@v8
-#       - run: |
-#           poetry --version
-#           poetry install
+      - name: Poetry restore lock file
+        run: poetry lock
+      
+      - name: Poetry install dependencies
+        run: poetry install
+      
+      - name: Run tests
+        run: poetry run pytest --cov=src --cov-report=xml
+      
+      
+    
