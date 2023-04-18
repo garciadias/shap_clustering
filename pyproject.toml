@@ -10,6 +10,10 @@ packages = [{include = "shap_clustering"}]
 python = "3.8.16"
 numpy = "^1.24.2"
 scikit-learn = "^1.2.2"
+pandas = "^2.0.0"
+matplotlib = "^3.7.1"
+seaborn = "^0.12.2"
+lightgbm = "^3.3.5"
 
 
 
