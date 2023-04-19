@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "shap-clustering"
+name = "shap_clustering"
 version = "0.1.0"
 description = ""
 authors = ["Rafael Dias <rafaelagd@gmail.com>"]
@@ -7,16 +7,41 @@ readme = "README.md"
 packages = [{include = "shap_clustering"}]
 
 [tool.poetry.dependencies]
-python = "3.8.16"
-numpy = "^1.24.2"
+python = "^3.11"
+numpy = "1.23.5"
 scikit-learn = "^1.2.2"
 pandas = "^2.0.0"
 matplotlib = "^3.7.1"
 seaborn = "^0.12.2"
 lightgbm = "^3.3.5"
+llvmlite = { git = "https://github.com/numba/llvmlite.git" }
+numba = { git = "https://github.com/numba/numba.git" }
+shap = "^0.41.0"
 
-
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.3.1"
+pytest-cov = "^4.0.0"
+taskipy = "^1.10.4"
+isort = "^5.12.0"
+mypy = "^1.2.0"
+black = "^23.3.0"
 
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.taskipy.tasks]
+lint = "black --check --diff . && isort --check --diff ."
+docs = "mkdocs serve"
+pre_test = "task lint"
+test = "pytest -s -x --cov=shap_clustering -vv"
+post_test = "coverage html"
+
+[tool.black]
+line-length = 120
+include = '\.pyi?$'
+# 'extend-exclude' excludes files or directories in addition to the defaults
+extend-exclude = "shap_clustering/shap/"
+
+[tool.isort]
+extend_skip = "shap_clustering/shap/"

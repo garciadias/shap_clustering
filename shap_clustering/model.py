@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+from typing import Any, Dict
 
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -42,7 +43,7 @@ class Explanation:
         importances = importances.sort_values(sort_model, ascending=True)
         return importances
 
-    def get_pdps(self) -> dict:
+    def get_pdps(self) -> Dict[Any, Any]:
         """Interpret the trained models using Partial Dependence Plots.
 
         Returns
@@ -53,7 +54,7 @@ class Explanation:
         """
         pdp = {}
         for feature in self.model_selection.X_train.columns:
-            pdp[feature] = {}
+            feature_plots = {}
             for model in self.model_selection.models:
                 model_name = model.__class__.__name__
                 partial_dependence(
@@ -64,11 +65,12 @@ class Explanation:
                     ice=False,
                     show=False,
                 )
-                pdp[feature][model_name] = plt.gca()
+                feature_plots[model_name] = plt.gca()
                 plt.close()
+            pdp[feature] = feature_plots
         return pdp
 
-    def _shap_values(self) -> dict:
+    def _shap_values(self) -> Dict:
         """Return shap values for the trained models.
 
         Returns
@@ -95,9 +97,7 @@ class Explanation:
 
         """
         fig, ax = plt.subplots()
-        normalized_importance = self.shap_importance_.div(
-            self.shap_importance_.max(axis=0), axis=1
-        )
+        normalized_importance = self.shap_importance_.div(self.shap_importance_.max(axis=0), axis=1)
         normalized_importance.plot.barh(ax=ax)
         return fig
 
@@ -139,9 +139,12 @@ class ModelSelection:
         """
         X = df.copy().drop(target, axis=1)
         y = df.copy()[target]
-        self.X_train, self.X_test, self.y_train, self.y_test = train_test_split(
-            X, y, test_size=0.2
-        )
+        (
+            self.X_train,
+            self.X_test,
+            self.y_train,
+            self.y_test,
+        ) = train_test_split(X, y, test_size=0.2)
         for model in self.models:
             model.fit(self.X_train, self.y_train)
         self.metrics = get_metrics(self.models, self.X_test, self.y_test)
@@ -158,4 +161,3 @@ class ModelSelection:
         """
         self.explaination = Explanation(self)
         return self.explaination
-

@@ -1,15 +1,14 @@
 import pytest
-
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 from numpy import ndarray
 from numpy.random import seed as default_rng
 from pandas import DataFrame
 from pytest import fixture
-from sklearn.datasets import load_diabetes
-from sklearn.utils.validation import check_is_fitted
-from sklearn.svm import SVC
 from sklearn.cluster import KMeans
+from sklearn.datasets import load_diabetes
+from sklearn.svm import SVC
+from sklearn.utils.validation import check_is_fitted
 
 from shap_clustering.metrics import REGRESSION_METRICS, get_model_type
 from shap_clustering.model import ModelSelection
@@ -36,6 +35,7 @@ def df():
     data = data.rename(columns=rename_dict)
     return data
 
+
 @fixture(scope="module")
 def selection(df):
     target = "target"
@@ -50,7 +50,10 @@ def test_ModelSelection_is_trained(selection):
     assert selection.models[0].__class__.__name__ == "LinearRegression"
     assert all([check_is_fitted(model) is None for model in selection.models])
     assert isinstance(selection.metrics, DataFrame)
-    assert selection.metrics.shape == (len(selection.models), len(REGRESSION_METRICS))
+    assert selection.metrics.shape == (
+        len(selection.models),
+        len(REGRESSION_METRICS),
+    )
 
 
 def test_ModelSelection_has_pdp(selection, df):
@@ -109,4 +112,3 @@ def test_clustering_metrics(df):
 
     with pytest.raises(ValueError) as excinfo:
         models.fit(df, target)
-    
