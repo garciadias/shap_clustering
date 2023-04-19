@@ -9,10 +9,13 @@ jobs:
       - name: Copy files from repository
         uses: actions/checkout@v3
 
-      - name: Install python 3.10.6
+      - name: Install python 3.11.3
         uses: actions/setup-python@v4
         with:
-          python-version: '3.10.6'
+          python-version: '3.11.3'
+
+      - name: Install lib for llvm
+        run: apt install libedit-dev
 
       - name: Install Poetry
         run: pip install poetry
