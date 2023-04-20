@@ -1,10 +1,4 @@
 # Clustering shap values
 
 ---------
-| |metacov|
-
-...
-    steps:
-      - uses: actions/checkout@v2
-      - name: Coverage Badge
-        uses: tj-actions/coverage-badge-py@v2
+[![codecov](https://codecov.io/github/garciadias/shap_clustering/branch/main/graph/badge.svg?token=M6X0L4D60B)](https://codecov.io/github/garciadias/shap_clustering)
