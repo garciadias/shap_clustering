@@ -33,6 +33,10 @@ jobs:
       - name: Run tests
         run: $CONDAENV/pytest -s -x --cov=shap_clustering -vv
 
-      - name: Run coverage html
-        run: $CONDAENV/coverage html
-          
+      - name: Run coverage xml
+        run: $CONDAENV/coverage xml
+
+      - name: Upload coverage xml
+        uses: codecov/codecov-action@v3
+        with:
+          token: ${{ secrets.CODECOV }}
