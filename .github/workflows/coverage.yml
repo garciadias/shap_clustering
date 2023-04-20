@@ -5,27 +5,34 @@ jobs:
   test:
     runs-on: ubuntu-latest
 
+    # Define conda environment path as an environment variable
+    env:
+      CONDAENV: /usr/share/miniconda/envs/shap_clustering/bin
+
+
     steps:
       - name: Copy files from repository
         uses: actions/checkout@v3
 
-      - name: Install python 3.11.3
+      - name: Install python 3.10.4
         uses: actions/setup-python@v4
         with:
-          python-version: '3.11.3'
-
-      - name: Install lib for llvm
-        run: apt install libedit-dev
-
-      - name: Install Poetry
-        run: pip install poetry
-
-      - name: Lock poetry
-        run: poetry lock
+          python-version: '3.10.4'
 
       - name: Install dependencies
-        run: poetry install
+        run: |
+          # $CONDA is an environment variable pointing to the root of the miniconda directory
+          $CONDA/bin/conda env create --file conda.yaml --name shap_clustering
+      
+      - name: Run codeing style checks
+        run: $CONDAENV/black --check --diff . && $CONDAENV/isort --check --diff . 
 
-      - name: Run code standards and tests
-        run: poetry run task test --cov-report=xml
+      - name: Run linting
+        run: $CONDAENV/flake8 . --exit-zero
+      
+      - name: Run tests
+        run: $CONDAENV/pytest -s -x --cov=shap_clustering -vv
 
+      - name: Run coverage html
+        run: $CONDAENV/coverage html
+          

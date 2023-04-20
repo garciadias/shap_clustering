@@ -97,7 +97,9 @@ class Explanation:
 
         """
         fig, ax = plt.subplots()
-        normalized_importance = self.shap_importance_.div(self.shap_importance_.max(axis=0), axis=1)
+        normalized_importance = self.shap_importance_.div(
+            self.shap_importance_.max(axis=0), axis=1
+        )
         normalized_importance.plot.barh(ax=ax)
         return fig
 

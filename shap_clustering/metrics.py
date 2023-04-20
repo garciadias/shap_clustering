@@ -33,7 +33,9 @@ def metric_selector(model: object) -> dict:
     elif model_type == "classifier":
         return CLASSIFICATION_METRICS
     else:
-        raise ValueError("The model must be an instance of an scikit-learn regressor or classifier.")
+        raise ValueError(
+            "The model must be an instance of an scikit-learn regressor or classifier."
+        )
 
 
 def get_model_type(model):
@@ -54,7 +56,9 @@ def get_model_type(model):
     elif isinstance(model, ClassifierMixin):
         return "classifier"
     else:
-        raise ValueError("The model must be an instance of an scikit-learn regressor or classifier.")
+        raise ValueError(
+            "The model must be an instance of an scikit-learn regressor or classifier."
+        )
 
 
 def get_metrics(models: object, X_test, y_test) -> pd.DataFrame:

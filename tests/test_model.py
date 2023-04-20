@@ -110,5 +110,5 @@ def test_clustering_metrics(df):
     target = "target"
     models = ModelSelection(models=[KMeans()])
 
-    with pytest.raises(ValueError) as excinfo:
+    with pytest.raises(ValueError):
         models.fit(df, target)
