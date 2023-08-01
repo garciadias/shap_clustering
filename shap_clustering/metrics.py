@@ -1,4 +1,7 @@
+from typing import Dict
+
 import pandas as pd
+from numpy import ndarray
 from sklearn import metrics
 from sklearn.base import ClassifierMixin, RegressorMixin
 
@@ -11,7 +14,10 @@ REGRESSION_METRICS = {
     "max_error": metrics.max_error,
 }
 
-CLASSIFICATION_METRICS = {"report": metrics.classification_report}
+CLASSIFICATION_METRICS = {
+    "accuracy": metrics.accuracy_score,
+    "balanced_accuracy": metrics.balanced_accuracy_score,
+}
 
 
 def metric_selector(model: object) -> dict:
@@ -30,12 +36,7 @@ def metric_selector(model: object) -> dict:
     model_type = get_model_type(model)
     if model_type == "regressor":
         return REGRESSION_METRICS
-    elif model_type == "classifier":
-        return CLASSIFICATION_METRICS
-    else:
-        raise ValueError(
-            "The model must be an instance of an scikit-learn regressor or classifier."
-        )
+    return CLASSIFICATION_METRICS
 
 
 def get_model_type(model):
@@ -53,32 +54,46 @@ def get_model_type(model):
     """
     if isinstance(model, RegressorMixin):
         return "regressor"
-    elif isinstance(model, ClassifierMixin):
+    if isinstance(model, ClassifierMixin):
         return "classifier"
-    else:
-        raise ValueError(
-            "The model must be an instance of an scikit-learn regressor or classifier."
-        )
+    raise ValueError("The model must be an instance of an scikit-learn like regressor or classifier.")
 
 
-def get_metrics(models: object, X_test, y_test) -> pd.DataFrame:
+def get_metrics(models: list, x_test: ndarray, y_test: ndarray, sort_by=None) -> pd.DataFrame:
     """Return metrics for the trained models.
+
+    Parameters
+    ----------
+    models : list
+        A list of trained models.
+    x_test : ndarray
+        The test set features.
+    y_test : ndarray
+        The test set target.
+    sort_by : str, optional
+        The metric to sort the results by, by default None
 
     Returns
     -------
-    pd.DataFrame : dataframe
-        Dataframe of metrics for each trained model.
+    pd.DataFrame
+        A DataFrame of metrics for the trained models.
 
+    Raises
+    ------
+    ValueError
+        If the model is not an instance of an scikit-learn like regressor or classifier.
     """
-    metrics = {}
+    metrics_dict: Dict[str, Dict[str, float]] = {}
     for model in models:
-        model_name = model.__class__.__name__
-        metrics[model_name] = {}
-        y_pred = model.predict(X_test)
+        model_metric: Dict[str, float] = {}
+        y_pred = model.predict(x_test)
         metrics_list = metric_selector(model)
         for metric_name, metric in metrics_list.items():
-            metrics[model_name][metric_name] = metric(y_test, y_pred)
-    metrics = pd.DataFrame.from_dict(metrics).T
-    if "r2" in metrics.columns:
-        metrics = metrics.sort_values("r2", ascending=False)
+            model_metric[metric_name] = metric(y_test, y_pred)
+        model_name = model.__class__.__name__
+        metrics_dict[model_name] = model_metric
+    metrics = pd.DataFrame.from_dict(metrics_dict).T
+    if (sort_by is None) or (sort_by not in metrics.columns):
+        sort_by = metrics.columns[0]
+    metrics = metrics.sort_values(sort_by, ascending=False)
     return metrics

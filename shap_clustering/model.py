@@ -1,16 +1,19 @@
 from dataclasses import dataclass, field
-from typing import Any, Dict
+from typing import Any, Dict, Optional
+from warnings import warn
 
 import matplotlib.pyplot as plt
 import pandas as pd
 from lightgbm import LGBMRegressor
 from matplotlib.figure import Figure
 from shap import Explainer
+from shap.utils._exceptions import ExplainerError
 from shap.plots import partial_dependence
 from sklearn.linear_model import ElasticNet, LinearRegression
 from sklearn.model_selection import train_test_split
 from sklearn.utils import resample
 
+from shap_clustering.clustering_shap import run_gmm
 from shap_clustering.metrics import get_metrics
 
 
@@ -33,12 +36,13 @@ class Explanation:
             Dataframe of SHAP importance for each trained model.
 
         """
+        feature_columns = self.model_selection.X_train.columns
         shap_importance = []
         for shap_values in self.shap_values_.values():
-            shap_importance.append(abs(shap_values).mean(axis=0))
-        indexes = self.model_selection.X_train.columns
-        cols = list(self.shap_values_.keys())
-        importances = pd.DataFrame(shap_importance, columns=indexes, index=cols).T
+            shap_values_train = shap_values[shap_values["train_test"].isin(["train"])][feature_columns]
+            shap_importance.append(shap_values_train.abs().mean(axis=0))
+        feature_indexes = list(self.shap_values_.keys())
+        importances = pd.DataFrame(shap_importance, columns=feature_columns, index=feature_indexes).T
         sort_model = self.model_selection.metrics.iloc[0].name
         importances = importances.sort_values(sort_model, ascending=True)
         return importances
@@ -81,10 +85,24 @@ class Explanation:
         """
         shap_values = {}
         for model in self.model_selection.models:
+            # get shap values for train and test data
+            explainer = Explainer(model, self.model_selection.X_train)
+            shap_values_train = explainer.shap_values(self.model_selection.X_train)
+            try:
+                shap_values_test = explainer.shap_values(self.model_selection.X_test)
+            except ExplainerError as e:
+                model_name = model.__class__.__name__
+                warn(f"Ignoring ExplainerError for test set on {model_name} by using `check_additivity=False`: {e}.")
+                shap_values_test = explainer.shap_values(self.model_selection.X_test, check_additivity=False)
+            # combine train and test shap values on a single DataFrame
+            shap_values_train_df = pd.DataFrame(shap_values_train, columns=self.model_selection.X_train.columns)
+            shap_values_train_df["train_test"] = ["train"] * shap_values_train_df.shape[0]
+            shap_values_test_df = pd.DataFrame(shap_values_test, columns=self.model_selection.X_test.columns)
+            shap_values_test_df["train_test"] = ["test"] * shap_values_test_df.shape[0]
+            combined_shap_values = pd.concat([shap_values_train_df, shap_values_test_df])
+            # add model name to the shap values
             model_name = model.__class__.__name__
-            X = self.model_selection.X_train
-            explainer = Explainer(model, X)
-            shap_values[model_name] = explainer.shap_values(X)
+            shap_values[model_name] = combined_shap_values
         return shap_values
 
     def importance_plot(self) -> Figure:
@@ -97,11 +115,35 @@ class Explanation:
 
         """
         fig, ax = plt.subplots()
-        normalized_importance = self.shap_importance_.div(
-            self.shap_importance_.max(axis=0), axis=1
-        )
+        normalized_importance = self.shap_importance_.div(self.shap_importance_.max(axis=0), axis=1)
         normalized_importance.plot.barh(ax=ax)
         return fig
+
+    def cluster_shap_values(self, n_components: Optional[int] = None) -> pd.DataFrame:
+        """Cluster the SHAP values for the trained models.
+
+        Parameters
+        ----------
+        n_components : int, optional, default=5
+            Number of clusters to be created.
+
+        Returns
+        -------
+        pd.DataFrame : dataframe
+            Dataframe of cluster assignation for the shap values using the clustering results from the best model
+            shapley train values.
+        """
+        feature_columns = self.model_selection.X_train.columns
+        self.gmm_models_ = {}
+        for model_name, shap_values in self.shap_values_.items():
+            shap_values_train = shap_values[shap_values["train_test"].isin(["train"])][feature_columns]
+            self.gmm_models_[model_name] = run_gmm(shap_values_train, n_components=n_components)
+        # create empty dataframe
+        shap_values_cluster = pd.DataFrame(columns=self.shap_values_.keys(), index=shap_values_train.index)
+        # fill dataframe with cluster assignation
+        for model_name, shap_values in self.shap_values_.items():
+            shap_values_cluster[model_name] = self.gmm_models_[model_name].predict(shap_values[feature_columns])
+        return shap_values_cluster
 
 
 @dataclass
@@ -139,14 +181,14 @@ class ModelSelection:
             The fitted ModelSelection object.
 
         """
-        X = df.copy().drop(target, axis=1)
+        x = df.copy().drop(target, axis=1)
         y = df.copy()[target]
         (
             self.X_train,
             self.X_test,
             self.y_train,
             self.y_test,
-        ) = train_test_split(X, y, test_size=0.2)
+        ) = train_test_split(x, y, test_size=0.2)
         for model in self.models:
             model.fit(self.X_train, self.y_train)
         self.metrics = get_metrics(self.models, self.X_test, self.y_test)
@@ -159,7 +201,6 @@ class ModelSelection:
         -------
         dict : dictionary
             Dictionary of Partial Dependence Plots for each trained model.
-
         """
         self.explaination = Explanation(self)
         return self.explaination

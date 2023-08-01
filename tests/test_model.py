@@ -1,7 +1,7 @@
 import pytest
+from lightgbm import LGBMRegressor
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
-from numpy import ndarray
 from numpy.random import seed as default_rng
 from pandas import DataFrame
 from pytest import fixture
@@ -44,7 +44,7 @@ def selection(df):
     return selection
 
 
-def test_ModelSelection_is_trained(selection):
+def test_modelselection_is_trained(selection):
     assert selection.models is not None
     assert len(selection.models) == 3
     assert selection.models[0].__class__.__name__ == "LinearRegression"
@@ -56,7 +56,29 @@ def test_ModelSelection_is_trained(selection):
     )
 
 
-def test_ModelSelection_has_pdp(selection, df):
+def test_modelselection_raises_warning():
+    selection = ModelSelection([LGBMRegressor()])
+    data = load_diabetes(as_frame=True).frame
+    rename_dict = {
+        "age": "Age",
+        "sex": "Sex",
+        "bmi": "BMI",
+        "bp": "Blood Pressure",
+        "s1": "Total Cholesterol",
+        "s2": "LDL Cholesterol",
+        "s3": "HDL Cholesterol",
+        "s4": "Thyroid",
+        "s5": "Glaucoma",
+        "s6": "Glucose",
+    }
+    data = data.rename(columns=rename_dict)
+    selection.fit(data, "target")
+    # assert warning is raised
+    with pytest.warns(UserWarning):
+        selection.explain()
+
+
+def test_modelselection_has_pdp(selection, df):
     # Check that the interpretation is a dictionary
     # Check that the elements in interpretation are matplotlib figures
     first_var = df.columns[0]
@@ -66,17 +88,17 @@ def test_ModelSelection_has_pdp(selection, df):
     assert isinstance(pdps[first_var]["LinearRegression"], Axes)
 
 
-def test_ModelSelection_has_shap_values(selection):
+def test_modelselection_has_shap_values(selection):
     # Check that the interpretation is a dictionary
     # Check that the elements in interpretation are matplotlib figures
     explanation = selection.explain()
     assert isinstance(explanation.shap_values_, dict)
-    assert isinstance(explanation.shap_values_["LinearRegression"], ndarray)
-    assert isinstance(explanation.shap_values_["LGBMRegressor"], ndarray)
-    assert isinstance(explanation.shap_values_["ElasticNet"], ndarray)
+    assert isinstance(explanation.shap_values_["LinearRegression"], DataFrame)
+    assert isinstance(explanation.shap_values_["LGBMRegressor"], DataFrame)
+    assert isinstance(explanation.shap_values_["ElasticNet"], DataFrame)
 
 
-def test_ModelSelection_has_shap_importance(selection):
+def test_modelselection_has_shap_importance(selection):
     # Check that the interpretation is a dictionary
     # Check that the elements in interpretation are matplotlib figures
     explanation = selection.explain()
@@ -87,7 +109,7 @@ def test_ModelSelection_has_shap_importance(selection):
     )
 
 
-def test_ModelSelection_has_importace_plot(selection):
+def test_modelselection_has_importace_plot(selection):
     # Check that the interpretation is a dictionary
     # Check that the elements in interpretation are matplotlib figures
     explanation = selection.explain()
@@ -112,3 +134,8 @@ def test_clustering_metrics(df):
 
     with pytest.raises(ValueError):
         models.fit(df, target)
+
+
+def test_modelselection_cluster_shap_values(selection):
+    explanation = selection.explain()
+    explanation.cluster_shap_values()

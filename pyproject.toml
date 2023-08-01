@@ -1,0 +1,8 @@
+[tool.taskipy.tasks]
+conde_style = "black --line-length 120 . && isort . --line-length 120"
+flake8 = "flake8 ."
+mypy = "mypy . --ignore-missing-imports"
+pre_test = "task conde_style && task flake8 && task mypy"
+test = "pytest -s -x --cov=shap_clustering -vv"
+post_test = "coverage html"
+show_coverage = "firefox htmlcov/index.html"

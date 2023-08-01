@@ -1,5 +1,5 @@
 # %%
-# %cd ..
+%cd ..
 from sklearn.datasets import load_diabetes
 
 from shap_clustering.model import ModelSelection
@@ -27,4 +27,25 @@ explanation = models.explain()
 # %%
 explanation.importance_plot()
 # %%
-models.metrics
+print(models.metrics)
+
+# %%
+clusters = explanation.cluster_shap_values()
+# %%
+clusters["LinearRegression"].value_counts()
+# %%
+# run tsne on the shap values
+from sklearn.manifold import TSNE
+import matplotlib.pyplot as plt
+
+shap_tsne = {}
+for model_name in clusters.columns:
+    tsne = TSNE(n_components=2, random_state=0)
+    feature_columns = df.columns[:-1]
+    shap_value_2d = tsne.fit_transform(explanation.shap_values_[model_name][feature_columns])
+    shap_tsne[model_name] = shap_value_2d
+# %%
+fig, axis = plt.subplots(1, 3, figsize=(15, 5))
+for i, (model_name, data) in enumerate(shap_tsne.items()):
+    axis[i].scatter(data[:, 0], data[:, 1], c=clusters[model_name])
+# %%
